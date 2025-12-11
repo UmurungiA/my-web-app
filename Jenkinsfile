@@ -2,35 +2,41 @@ pipeline {
     agent any
 
     environment {
-        // Replace with your Docker Hub username/repo
-        DOCKER_IMAGE = 'uanike/web-app'
-        DOCKER_CREDENTIALS_ID = 'uanike' // Jenkins credentials ID
+        DOCKER_IMAGE = 'uanike/web-app'           // Docker Hub repo name
+        DOCKER_TAG = 'latest'
+        REMOTE_USER = 'anick'
+        REMOTE_HOST = '172.31.129.66'
+        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
     }
 
     stages {
-
-        stage('Checkout') {
-            steps {
-                echo "Checking out code..."
-                checkout scm
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image..."
-                // Use Windows bat command to build Docker image
-                bat "docker build -t %DOCKER_IMAGE% ."
+                sh 'docker build -t $DOCKER_IMAGE:$DOCKER_TAG .'
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                echo "Pushing Docker image to Docker Hub..."
-                // Use Jenkins credentials to login and push
-                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
-                    bat "docker push %DOCKER_IMAGE%"
+                withCredentials([usernamePassword(credentialsId: "$DOCKER_CREDENTIALS_ID", 
+                                                  usernameVariable: 'DOCKER_USER', 
+                                                  passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                    echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                    docker push $DOCKER_IMAGE:$DOCKER_TAG
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Remote Host') {
+            steps {
+                sshagent(['remote-host-ssh-key']) {
+                    sh '''
+                    ssh $REMOTE_USER@$REMOTE_HOST "docker pull $DOCKER_IMAGE:$DOCKER_TAG"
+                    ssh $REMOTE_USER@$REMOTE_HOST "docker rm -f my-web-app || true"
+                    ssh $REMOTE_USER@$REMOTE_HOST "docker run -d --name my-web-app -p 8080:3000 $DOCKER_IMAGE:$DOCKER_TAG"
+                    '''
                 }
             }
         }
@@ -38,10 +44,10 @@ pipeline {
 
     post {
         success {
-            echo "Docker image successfully built and pushed!"
+            echo 'Deployment completed successfully!'
         }
         failure {
-            echo "Pipeline failed. Check console output for errors."
+            echo 'Deployment failed. Check the logs!'
         }
     }
 }
