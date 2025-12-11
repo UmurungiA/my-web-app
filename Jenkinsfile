@@ -7,7 +7,6 @@ pipeline {
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
@@ -16,23 +15,17 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                script {
-                    echo "Building Docker image..."
-                    dockerImage = docker.build("${DOCKER_IMAGE}:latest")
-                }
+                bat "docker build -t %DOCKER_IMAGE% ."
             }
         }
 
         stage('Push to Docker Hub') {
             steps {
-                script {
-                    echo "Pushing image to Docker Hub..."
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_CREDENTIALS_ID) {
-                        dockerImage.push('latest')
-                    }
+                withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    bat "docker login -u %DOCKER_USER% -p %DOCKER_PASS%"
+                    bat "docker push %DOCKER_IMAGE%"
                 }
             }
         }
-
     }
 }
