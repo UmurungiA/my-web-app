@@ -1,0 +1,35 @@
+name: Release Node.js App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build app
+        run: npm run build
+
+      - name: Build Docker image
+        run: docker build -t my-nodejs-app:latest .
+
+      # Optional: Push Docker image to Docker Hub
+      - name: Push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: dockerhub_username/my-nodejs-app:latest

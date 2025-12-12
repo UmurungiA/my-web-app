@@ -1,0 +1,14 @@
+{
+  "name": "nodejs-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "build": "echo 'build step here'",
+    "release": "echo 'release step here'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
